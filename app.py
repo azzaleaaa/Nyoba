@@ -1,8 +1,13 @@
 import streamlit as st
 from PIL import Image
-from transformers import AutoImageProcessor, AutoModelForImageClassification
+from transformers import (
+    AutoImageProcessor,
+    AutoModelForImageClassification,
+    AutoConfig,
+)
 import torch
 import json
+import os
 
 st.title("Perbandingan Model Deteksi Kanker Kulit")
 
@@ -11,7 +16,7 @@ if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, caption="Gambar yang diunggah", use_column_width=True)
 
-    # Ganti model_id sesuai model yang ada di Hugging Face hub
+    # Daftar model dan ID dari Hugging Face Hub
     models = {
         "Vision Transformer": "Anwarkh1/Skin_Cancer-Image_Classification",
         "ConvNext": "Pranavkpba2000/convnext-fine-tuned-complete-skin-cancer-50epoch"
@@ -20,17 +25,29 @@ if uploaded_file:
     for model_name, model_id in models.items():
         st.subheader(f"Model: {model_name}")
         with st.spinner(f"Memproses dengan {model_name}..."):
-            # Memuat konfigurasi dari file JSON
-            with open(f"configs/{model_name.lower().replace(' ', '_')}_config.json", "r") as f:
-                custom_config = json.load(f)
-            with open(f"configs/{model_name.lower().replace(' ', '_')}_preprocessor_config.json", "r") as f:
-                custom_preprocessor_config = json.load(f)
+            # Nama file konfigurasi
+            config_path = f"configs/{model_name.lower().replace(' ', '_')}_config.json"
+            preprocessor_config_path = f"configs/{model_name.lower().replace(' ', '_')}_preprocessor_config.json"
 
-            # Memuat preprocessor dan model dengan konfigurasi yang dimodifikasi
-            processor = AutoImageProcessor.from_pretrained(model_id, **custom_preprocessor_config)
-            model = AutoModelForImageClassification.from_pretrained(model_id, config=custom_config)
+            # Cek apakah file config tersedia
+            if not os.path.exists(config_path) or not os.path.exists(preprocessor_config_path):
+                st.error(f"File konfigurasi untuk {model_name} tidak ditemukan.")
+                continue
 
+            # Memuat konfigurasi model dan preprocessor dari JSON
+            with open(config_path, "r") as f:
+                config_dict = json.load(f)
+            with open(preprocessor_config_path, "r") as f:
+                preprocessor_dict = json.load(f)
+
+            # Buat objek config dan preprocessor
+            config = AutoConfig.from_pretrained(model_id, **config_dict)
+            processor = AutoImageProcessor.from_pretrained(model_id, **preprocessor_dict)
+
+            # Proses gambar dan prediksi
             inputs = processor(images=image, return_tensors="pt")
+            model = AutoModelForImageClassification.from_pretrained(model_id, config=config)
+
             with torch.no_grad():
                 outputs = model(**inputs)
                 probs = torch.nn.functional.softmax(outputs.logits, dim=1)
@@ -45,8 +62,9 @@ if uploaded_file:
             else:
                 st.write("⚠️ Model tidak cukup yakin untuk melakukan prediksi (akurasi < 50%).")
 
-st.markdown("""---
-### 🧠 Credit
+# Footer kredit
+st.markdown("""---  
+### 🧠 Credit  
 **📦 Model:**  
 - [Vision Transformer by Anwarkh1](https://huggingface.co/Anwarkh1/Skin_Cancer-Image_Classification)  
 - [ConvNext by Pranavkpba2000](https://huggingface.co/Pranavkpba2000/convnext-fine-tuned-complete-skin-cancer-50epoch)
