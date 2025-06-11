@@ -2,6 +2,7 @@ import streamlit as st
 from PIL import Image
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 import torch
+import json
 
 st.title("Perbandingan Model Deteksi Kanker Kulit")
 
@@ -19,8 +20,15 @@ if uploaded_file:
     for model_name, model_id in models.items():
         st.subheader(f"Model: {model_name}")
         with st.spinner(f"Memproses dengan {model_name}..."):
-            processor = AutoImageProcessor.from_pretrained(model_id)
-            model = AutoModelForImageClassification.from_pretrained(model_id)
+            # Memuat konfigurasi dari file JSON
+            with open(f"configs/{model_name.lower().replace(' ', '_')}_config.json", "r") as f:
+                custom_config = json.load(f)
+            with open(f"configs/{model_name.lower().replace(' ', '_')}_preprocessor_config.json", "r") as f:
+                custom_preprocessor_config = json.load(f)
+
+            # Memuat preprocessor dan model dengan konfigurasi yang dimodifikasi
+            processor = AutoImageProcessor.from_pretrained(model_id, **custom_preprocessor_config)
+            model = AutoModelForImageClassification.from_pretrained(model_id, config=custom_config)
 
             inputs = processor(images=image, return_tensors="pt")
             with torch.no_grad():
@@ -37,18 +45,9 @@ if uploaded_file:
             else:
                 st.write("⚠️ Model tidak cukup yakin untuk melakukan prediksi (akurasi < 50%).")
 
-st.markdown("""
-
----
-
+st.markdown("""---
 ### 🧠 Credit
-
 **📦 Model:**  
 - [Vision Transformer by Anwarkh1](https://huggingface.co/Anwarkh1/Skin_Cancer-Image_Classification)  
 - [ConvNext by Pranavkpba2000](https://huggingface.co/Pranavkpba2000/convnext-fine-tuned-complete-skin-cancer-50epoch)
-
-**🤖 Chat Assistant:**  
-- ChatGPT by OpenAI  
-- Gemini by Google
-
 """)
