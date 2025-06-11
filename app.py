@@ -5,15 +5,6 @@ import torch
 
 st.title("Perbandingan Model Deteksi Kanker Kulit")
 
-# Identitas pembuat
-st.markdown("""
-**Aplikasi ini dibuat oleh:**  
-👨‍🎓 **Nama** : Muhammad Firda Satria  
-🆔 **NIM** : 2304130057  
-💻 **Prodi** : Teknik Informatika  
-""")
-
-
 uploaded_file = st.file_uploader("Unggah gambar lesi kulit", type=["jpg", "jpeg", "png"])
 if uploaded_file:
     image = Image.open(uploaded_file)
